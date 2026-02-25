@@ -23,7 +23,7 @@ def send_verification_email(to_email, token):
         """
 
         params = {
-            "from": "Victor Springs <noreply@victorsprings.com>", # Use a verified domain or testing domain
+            "from": os.environ.get('MAIL_FROM', 'Victor Springs <noreply@victorspringslimited.qzz.io>'),
             "to": [to_email],
             "subject": "Verify your email address - Victor Springs",
             "html": html_content
@@ -56,7 +56,7 @@ def send_password_reset_email(to_email, token):
         """
 
         params = {
-            "from": "Victor Springs <noreply@victorsprings.com>",
+            "from": os.environ.get('MAIL_FROM', 'Victor Springs <noreply@victorspringslimited.qzz.io>'),
             "to": [to_email],
             "subject": "Reset your password - Victor Springs",
             "html": html_content
