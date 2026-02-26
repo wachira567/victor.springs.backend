@@ -144,6 +144,30 @@ def create_property():
         title = sanitize_string(data.get('title', '')).strip()
         description = sanitize_string(data.get('description', '')).strip()
         
+        from datetime import datetime
+        
+        def safe_float(val):
+            try:
+                return float(val) if val and str(val).strip() != "" else None
+            except:
+                return None
+        
+        def safe_int(val, default=None):
+            try:
+                return int(val) if val and str(val).strip() != "" else default
+            except:
+                return default
+                
+        def safe_date(val):
+            if not val or str(val).strip() == "":
+                return datetime.utcnow().date()
+            try:
+                if isinstance(val, str):
+                    return datetime.strptime(val.split('T')[0], '%Y-%m-%d').date()
+                return val
+            except:
+                return datetime.utcnow().date()
+
         # Create property
         property = Property(
             title=title,
@@ -152,24 +176,24 @@ def create_property():
             city=sanitize_string(data.get('city', '')).strip(),
             address=sanitize_string(data.get('address', '')).strip(),
             location_description=sanitize_string(data.get('locationDescription', '')).strip(),
-            latitude=data.get('latitude'),
-            longitude=data.get('longitude'),
+            latitude=safe_float(data.get('latitude')),
+            longitude=safe_float(data.get('longitude')),
             
-            # Legacy flat fields (falling back to unit derived data if absent)
-            price=data.get('price'),
-            deposit=data.get('deposit'),
-            bedrooms=data.get('bedrooms'),
-            bathrooms=data.get('bathrooms'),
-            area=data.get('area'),
+            # Legacy flat fields
+            price=safe_float(data.get('price')),
+            deposit=safe_float(data.get('deposit')),
+            bedrooms=safe_int(data.get('bedrooms')),
+            bathrooms=safe_int(data.get('bathrooms')),
+            area=safe_int(data.get('area')),
             
             # New multi-unit / advanced fields
             units=data.get('units', []),
-            tenant_agreement_fee=data.get('tenantAgreementFee') or data.get('tenant_agreement_fee'),
+            tenant_agreement_fee=safe_float(data.get('tenantAgreementFee') or data.get('tenant_agreement_fee')),
             
             amenities=data.get('amenities', []),
             images=data.get('images', []),
-            available_from=data.get('available_from'),
-            minimum_lease_months=data.get('minimum_lease_months', 12),
+            available_from=safe_date(data.get('available_from')),
+            minimum_lease_months=safe_int(data.get('minimum_lease_months'), 12),
             landlord_id=user_id,
             status='pending_review',
             is_partner_property=True
