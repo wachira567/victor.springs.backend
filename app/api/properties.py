@@ -112,14 +112,24 @@ def create_property():
         property = Property(
             title=title,
             description=description,
-            property_type=data.get('property_type'),
+            property_type=data.get('propertyType') or data.get('property_type'),
             city=sanitize_string(data.get('city', '')).strip(),
             address=sanitize_string(data.get('address', '')).strip(),
+            location_description=sanitize_string(data.get('locationDescription', '')).strip(),
+            latitude=data.get('latitude'),
+            longitude=data.get('longitude'),
+            
+            # Legacy flat fields (falling back to unit derived data if absent)
             price=data.get('price'),
             deposit=data.get('deposit'),
             bedrooms=data.get('bedrooms'),
             bathrooms=data.get('bathrooms'),
             area=data.get('area'),
+            
+            # New multi-unit / advanced fields
+            units=data.get('units', []),
+            tenant_agreement_fee=data.get('tenantAgreementFee') or data.get('tenant_agreement_fee'),
+            
             amenities=data.get('amenities', []),
             images=data.get('images', []),
             available_from=data.get('available_from'),
