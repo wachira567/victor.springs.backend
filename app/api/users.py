@@ -62,34 +62,56 @@ def get_user(user_id):
         return jsonify({'message': 'Failed to fetch user', 'error': str(e)}), 500
 
 
-@users_bp.route('/<int:user_id>', methods=['PUT'])
+@users_bp.route('/<int:user_id>/role', methods=['PUT'])
 @jwt_required()
 @admin_required
-def update_user(user_id):
-    """Update a user (admin only)"""
+def update_user_role(user_id):
+    """Update a user's role (super_admin only ideally)"""
     try:
+        current_admin = User.query.get(get_jwt_identity())
+        if not current_admin or not current_admin.is_super_admin():
+            return jsonify({'message': 'Only Super Admins can change roles'}), 403
+            
         user = User.query.get_or_404(user_id)
+        if user.is_super_admin() and current_admin.id != user.id:
+            return jsonify({'message': 'Cannot demote other Super Admins'}), 403
+
         data = request.get_json()
-        
-        if 'name' in data:
-            user.name = sanitize_string(data['name']).strip()
-        if 'phone' in data:
-            user.phone = sanitize_string(data['phone']).strip()
         if 'role' in data and data['role'] in ['super_admin', 'admin', 'landlord', 'tenant']:
             user.role = data['role']
-        if 'is_active' in data:
-            user.is_active = data['is_active']
-        
-        db.session.commit()
-        
-        return jsonify({
-            'message': 'User updated successfully',
-            'user': user.to_dict()
-        }), 200
+            db.session.commit()
+            return jsonify({'message': 'User role updated successfully', 'user': user.to_dict()}), 200
+            
+        return jsonify({'message': 'Invalid role provided'}), 400
         
     except Exception as e:
         db.session.rollback()
-        return jsonify({'message': 'Failed to update user', 'error': str(e)}), 500
+        return jsonify({'message': 'Failed to update user role', 'error': str(e)}), 500
+
+
+@users_bp.route('/<int:user_id>/status', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_user_status(user_id):
+    """Ban or unban a user by toggling is_active"""
+    try:
+        user = User.query.get_or_404(user_id)
+        current_admin = User.query.get(get_jwt_identity())
+        
+        if user.is_super_admin() and current_admin.id != user.id:
+            return jsonify({'message': 'Cannot ban a Super Admin'}), 403
+
+        data = request.get_json()
+        if 'is_active' in data:
+            user.is_active = bool(data['is_active'])
+            db.session.commit()
+            return jsonify({'message': 'User status updated successfully', 'user': user.to_dict()}), 200
+            
+        return jsonify({'message': 'is_active flag missing'}), 400
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to update user status', 'error': str(e)}), 500
 
 
 @users_bp.route('/<int:user_id>', methods=['DELETE'])

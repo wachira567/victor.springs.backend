@@ -20,6 +20,9 @@ class Property(db.Model):
     deposit = db.Column(db.Numeric(12, 2), nullable=True)
     tenant_agreement_fee = db.Column(db.Numeric(12, 2), nullable=True)
     
+    # Documents & Legal
+    tenant_agreement_url = db.Column(db.String(500), nullable=True)
+    
     # Details
     bedrooms = db.Column(db.Integer, nullable=True)
     bathrooms = db.Column(db.Integer, nullable=True)
@@ -62,6 +65,10 @@ class Property(db.Model):
     # Statistics
     view_count = db.Column(db.Integer, default=0)
     inquiry_count = db.Column(db.Integer, default=0)
+    like_count = db.Column(db.Integer, default=0)
+    whatsapp_clicks = db.Column(db.Integer, default=0)
+    call_clicks = db.Column(db.Integer, default=0)
+    map_clicks = db.Column(db.Integer, default=0)
     
     # Relationships
     landlord_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
@@ -136,6 +143,7 @@ class Property(db.Model):
             'price': float(self.price) if self.price is not None else None,
             'deposit': float(self.deposit) if self.deposit is not None else (float(self.price) if self.price is not None else None),
             'tenant_agreement_fee': float(self.tenant_agreement_fee) if self.tenant_agreement_fee is not None else None,
+            'tenant_agreement_url': self.tenant_agreement_url,
             'bedrooms': self.bedrooms,
             'bathrooms': self.bathrooms,
             'area': self.area,
@@ -149,6 +157,10 @@ class Property(db.Model):
             'is_partner_property': self.is_partner_property,
             'view_count': self.view_count,
             'inquiry_count': self.inquiry_count,
+            'like_count': self.like_count,
+            'whatsapp_clicks': self.whatsapp_clicks,
+            'call_clicks': self.call_clicks,
+            'map_clicks': self.map_clicks,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'published_at': self.published_at.isoformat() if self.published_at else None,
         }

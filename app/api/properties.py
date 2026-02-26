@@ -1,9 +1,10 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask_jwt_extended import jwt_required, get_jwt_identity, verify_jwt_in_request
 from sqlalchemy import or_, and_
 from app import db
 from app.models.property import Property
 from app.models.user import User
+from app.models.property_like import PropertyLike
 from app.utils.decorators import admin_required, landlord_required
 from app.utils.sanitizers import sanitize_string
 
@@ -28,8 +29,25 @@ def get_properties():
         # Base query - only show active properties for public
         query = Property.query
         
-        if status:
+        
+        # Check if user is admin to allow fetching specific statuses other than active
+        is_admin = False
+        try:
+            verify_jwt_in_request(optional=True)
+            identity = get_jwt_identity()
+            if identity:
+                user = User.query.get(identity)
+                if user and user.is_admin():
+                    is_admin = True
+        except:
+            pass
+            
+        if status and status != 'all':
+            if status != 'active' and not is_admin:
+                return jsonify({'message': 'Permission denied: non-admins can only view active properties'}), 403
             query = query.filter_by(status=status)
+        elif not status:
+            query = query.filter_by(status='active')
         
         # Apply filters
         if search:
@@ -144,6 +162,13 @@ def create_property():
             is_partner_property=True
         )
         
+        # Handle Tenant Agreement Upload
+        tenant_agreement = request.files.get('tenant_agreement_file')
+        if tenant_agreement:
+            url = cloudinary.upload_document(tenant_agreement, folder='tenant_agreements')
+            if url:
+                property.tenant_agreement_url = url
+                
         db.session.add(property)
         db.session.commit()
         
@@ -253,7 +278,7 @@ def approve_property(property_id):
         user_id = get_jwt_identity()
         property = Property.query.get_or_404(property_id)
         
-        if property.status not in ['pending_review', 'fee_pending']:
+        if property.status not in ['pending_review', 'fee_pending', 'inactive']:
             return jsonify({'message': 'Property cannot be approved'}), 400
         
         property.approve(user_id)
@@ -267,6 +292,31 @@ def approve_property(property_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Failed to approve property', 'error': str(e)}), 500
+
+@properties_bp.route('/<int:property_id>/status', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_property_status(property_id):
+    """Admin toggle property status to inactive/active/approved"""
+    try:
+        property = Property.query.get_or_404(property_id)
+        data = request.get_json()
+        new_status = data.get('status')
+        
+        if new_status not in ['active', 'inactive', 'approved', 'rejected', 'pending_review']:
+            return jsonify({'message': 'Invalid status'}), 400
+            
+        property.status = new_status
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Property status updated to {new_status}',
+            'property': property.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to update property status', 'error': str(e)}), 500
 
 
 @properties_bp.route('/<int:property_id>/reject', methods=['POST'])
@@ -343,3 +393,66 @@ def get_my_properties():
         
     except Exception as e:
         return jsonify({'message': 'Failed to fetch properties', 'error': str(e)}), 500
+
+@properties_bp.route('/<int:property_id>/like', methods=['POST'])
+@jwt_required()
+def toggle_property_like(property_id):
+    """Toggle a like on a property for the current user"""
+    try:
+        user_id = get_jwt_identity()
+        property = Property.query.get_or_404(property_id)
+        
+        # Prevent liking multiple times
+        existing_like = PropertyLike.query.filter_by(user_id=user_id, property_id=property_id).first()
+        
+        if existing_like:
+            # Unlike
+            db.session.delete(existing_like)
+            property.like_count = max(0, property.like_count - 1)
+            db.session.commit()
+            return jsonify({'message': 'Property unliked', 'liked': False, 'like_count': property.like_count}), 200
+        else:
+            # Like
+            new_like = PropertyLike(user_id=user_id, property_id=property_id)
+            db.session.add(new_like)
+            property.like_count += 1
+            db.session.commit()
+            return jsonify({'message': 'Property liked', 'liked': True, 'like_count': property.like_count}), 200
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Error processing like', 'error': str(e)}), 500
+
+@properties_bp.route('/<int:property_id>/interact', methods=['POST'])
+def record_property_interaction(property_id):
+    """Record a user interaction (whatsapp, call, map) without requiring auth"""
+    try:
+        data = request.get_json() or {}
+        interaction_type = data.get('type')
+        
+        if interaction_type not in ['whatsapp', 'call', 'map']:
+            return jsonify({'message': 'Invalid interaction type'}), 400
+            
+        property = Property.query.get_or_404(property_id)
+        
+        if interaction_type == 'whatsapp':
+            property.whatsapp_clicks += 1
+        elif interaction_type == 'call':
+            property.call_clicks += 1
+        elif interaction_type == 'map':
+            property.map_clicks += 1
+            
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'{interaction_type} interaction recorded successfully',
+            'stats': {
+                'whatsapp_clicks': property.whatsapp_clicks,
+                'call_clicks': property.call_clicks,
+                'map_clicks': property.map_clicks
+            }
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to record interaction', 'error': str(e)}), 500

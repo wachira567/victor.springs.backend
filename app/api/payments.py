@@ -111,6 +111,12 @@ def mpesa_callback():
             
             payment.complete(receipt_number)
             
+            # If agreement fee, find application and link payment (simplified approach)
+            if payment.payment_type == 'agreement_fee':
+                # The frontend submits application *after* the payment,
+                # but we just need the payment to be marked as complete so it's valid.
+                pass
+                
             # If partnership fee, update property status
             if payment.payment_type == 'partnership_fee' and payment.property_id:
                 property = Property.query.get(payment.property_id)
