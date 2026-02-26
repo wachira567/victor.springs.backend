@@ -17,13 +17,17 @@ class User(db.Model):
     phone_verified_at = db.Column(db.DateTime, nullable=True)
     avatar_url = db.Column(db.String(500), nullable=True)
     
+    # Identity & KYC Fields (Shared)
+    id_number = db.Column(db.String(50), nullable=True)
+    id_document_url = db.Column(db.String(500), nullable=True)
+    
     # Landlord specific fields
     company_name = db.Column(db.String(255), nullable=True)
     company_registration = db.Column(db.String(100), nullable=True)
+    is_landlord_verified = db.Column(db.Boolean, default=False)
+    verification_status = db.Column(db.String(20), default='pending') # pending, verified, rejected
     
     # Tenant specific fields
-    id_number = db.Column(db.String(50), nullable=True)
-    id_document_url = db.Column(db.String(500), nullable=True)
     employment_status = db.Column(db.String(50), nullable=True)
     monthly_income = db.Column(db.Numeric(12, 2), nullable=True)
     
@@ -90,11 +94,15 @@ class User(db.Model):
             data.update({
                 'company_name': self.company_name,
                 'company_registration': self.company_registration,
+                'is_landlord_verified': self.is_landlord_verified,
+                'verification_status': self.verification_status,
+                'id_number': self.id_number,
             })
         
         if include_sensitive:
             data.update({
                 'id_number': self.id_number,
+                'id_document_url': self.id_document_url,
                 'employment_status': self.employment_status,
                 'monthly_income': float(self.monthly_income) if self.monthly_income else None,
             })

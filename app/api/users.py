@@ -117,3 +117,87 @@ def delete_user(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Failed to delete user', 'error': str(e)}), 500
+
+@users_bp.route('/kyc/pending', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_pending_kyc():
+    """Get all pending KYC verification requests (admin only)"""
+    try:
+        from app.models.document import Document
+        # Fetch pending documents that are ID documents
+        pending_docs = Document.query.filter_by(
+            document_type='id_document',
+            status='pending'
+        ).all()
+        
+        results = []
+        for doc in pending_docs:
+            user = User.query.get(doc.user_id)
+            if user:
+                results.append({
+                    'document': doc.to_dict(include_file_url=True),
+                    'user': user.to_dict(include_sensitive=True)
+                })
+                
+        return jsonify({'requests': results}), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch KYC requests', 'error': str(e)}), 500
+
+@users_bp.route('/kyc/<int:doc_id>/approve', methods=['POST'])
+@jwt_required()
+@admin_required
+def approve_kyc(doc_id):
+    """Approve a KYC verification request (admin only)"""
+    try:
+        from app.models.document import Document
+        admin_id = get_jwt_identity()
+        doc = Document.query.get_or_404(doc_id)
+        
+        if doc.document_type != 'id_document':
+            return jsonify({'message': 'Invalid document type'}), 400
+            
+        doc.verify(admin_user_id=admin_id, notes="Approved by Admin")
+        
+        user = User.query.get(doc.user_id)
+        if user:
+            user.verification_status = 'verified'
+            user.is_landlord_verified = True
+            
+        db.session.commit()
+        return jsonify({'message': 'KYC request approved successfully'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to approve KYC', 'error': str(e)}), 500
+
+@users_bp.route('/kyc/<int:doc_id>/reject', methods=['POST'])
+@jwt_required()
+@admin_required
+def reject_kyc(doc_id):
+    """Reject a KYC verification request (admin only)"""
+    try:
+        from app.models.document import Document
+        admin_id = get_jwt_identity()
+        data = request.get_json() or {}
+        reason = data.get('reason', 'Rejected by Admin')
+        
+        doc = Document.query.get_or_404(doc_id)
+        
+        if doc.document_type != 'id_document':
+            return jsonify({'message': 'Invalid document type'}), 400
+            
+        doc.reject(admin_user_id=admin_id, notes=reason)
+        
+        user = User.query.get(doc.user_id)
+        if user:
+            user.verification_status = 'rejected'
+            user.is_landlord_verified = False
+            
+        db.session.commit()
+        return jsonify({'message': 'KYC request rejected'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to reject KYC', 'error': str(e)}), 500

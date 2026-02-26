@@ -11,6 +11,9 @@ from app.models.identity import Identity
 from app.utils.validators import validate_email, validate_phone, validate_password
 from app.utils.sanitizers import sanitize_string
 from app.utils.email import send_verification_email, send_password_reset_email
+from app.models.document import Document
+from werkzeug.utils import secure_filename
+import uuid
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -387,3 +390,104 @@ def reset_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Something went wrong resetting the password.'}), 500
+
+# Constants for file uploads
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@auth_bp.route('/kyc/submit', methods=['POST'])
+@jwt_required()
+def submit_kyc():
+    """Submit Landlord KYC verification details and ID document."""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
+            
+        if not user.is_landlord():
+            return jsonify({'message': 'Only landlords can submit KYC verification.'}), 403
+            
+        if user.verification_status == 'verified':
+            return jsonify({'message': 'You are already verified.'}), 400
+            
+        # Parse text fields
+        first_name = request.form.get('first_name', '').strip()
+        middle_name = request.form.get('middle_name', '').strip()
+        last_name = request.form.get('last_name', '').strip()
+        id_number = request.form.get('id_number', '').strip()
+        phone = request.form.get('phone', '').strip()
+        signature_method = request.form.get('signature_method', 'electronic').strip()
+        
+        if not first_name or not last_name or not id_number or not phone:
+            return jsonify({'message': 'First name, last name, ID number, and phone are required.'}), 400
+            
+        if not validate_phone(phone):
+            return jsonify({'message': 'Invalid phone number format.'}), 400
+            
+        # Handle file upload
+        if 'id_document' not in request.files:
+            return jsonify({'message': 'No ID document provided.'}), 400
+            
+        file = request.files['id_document']
+        
+        if file.filename == '':
+            return jsonify({'message': 'No selected file.'}), 400
+            
+        input_file_data = file.read()
+        if len(input_file_data) > MAX_FILE_SIZE:
+            return jsonify({'message': 'File exceeds maximum 5MB size limit.'}), 400
+        file.seek(0) # Reset pointer
+            
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4().hex}_{filename}"
+            
+            # Configure upload directory
+            upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'kyc')
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            file_path = os.path.join(upload_dir, unique_filename)
+            file.save(file_path)
+            
+            # File URL path for frontend use (served via static)
+            file_url = f"/static/uploads/kyc/{unique_filename}"
+            
+            # Create a Document log
+            doc = Document(
+                user_id=user.id,
+                name=f"National ID/Passport - {user.email}",
+                document_type='id_document',
+                file_url=file_url,
+                file_size=len(input_file_data),
+                mime_type=file.content_type,
+                status='pending',
+                is_accessible=True
+            )
+            db.session.add(doc)
+            
+            # Update User metrics
+            full_name = f"{first_name} {middle_name} {last_name}".replace('  ', ' ')
+            user.name = full_name
+            user.id_number = id_number
+            user.phone = phone
+            user.id_document_url = file_url
+            user.verification_status = 'pending'
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Verification request submitted successfully. Our team will review it shortly.',
+                'signature_method': signature_method
+            }), 200
+            
+        return jsonify({'message': 'File type not allowed. Must be PNG, JPG, JPEG, or PDF.'}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Internal Server Error', 'error': str(e)}), 500

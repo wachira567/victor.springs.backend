@@ -102,6 +102,11 @@ def create_property():
     """Create a new property listing"""
     try:
         user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if user and not user.is_super_admin() and not user.is_landlord_verified:
+            return jsonify({'message': 'You must complete Landlord Identity Verification (KYC) before listing properties.'}), 403
+            
         data = request.get_json()
         
         # Sanitize inputs
