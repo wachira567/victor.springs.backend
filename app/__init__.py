@@ -63,7 +63,12 @@ def create_app(config_name=None):
     
     # Security headers (only in production)
     if os.getenv('FLASK_ENV') == 'production':
-        Talisman(app, force_https=True)
+        Talisman(
+            app, 
+            force_https=True,
+            content_security_policy=None, # Configure CSP separately if needed
+            cross_origin_opener_policy='same-origin-allow-popups' # Required for Google OAuth
+        )
     
     # Register blueprints
     from app.api.auth import auth_bp
