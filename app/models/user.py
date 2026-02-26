@@ -10,7 +10,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=True) # Nullable because of Google OAuth
     name = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(20), nullable=False)
-    role = db.Column(db.String(20), nullable=False, default='tenant')  # super_admin, admin, landlord, tenant
+    role = db.Column(db.Enum('super_admin', 'admin', 'landlord', 'tenant', name='user_role_enum', create_type=True), nullable=False, server_default='tenant', default='tenant')
     is_active = db.Column(db.Boolean, default=True)
     is_verified = db.Column(db.Boolean, default=False)
     email_verified_at = db.Column(db.DateTime, nullable=True)
