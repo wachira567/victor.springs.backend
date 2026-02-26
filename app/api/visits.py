@@ -31,7 +31,7 @@ def get_visits():
         return jsonify({'message': 'Failed to fetch visits', 'error': str(e)}), 500
 
 
-@visits_bp.route('/', methods=['POST'])
+@visits_bp.route('/', methods=['POST'], strict_slashes=False)
 @jwt_required()
 def create_visit():
     """Schedule a new visit"""
