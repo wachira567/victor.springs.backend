@@ -16,13 +16,18 @@ class Property(db.Model):
     longitude = db.Column(db.Numeric(11, 8), nullable=True)
     
     # Pricing
-    price = db.Column(db.Numeric(12, 2), nullable=False)
+    price = db.Column(db.Numeric(12, 2), nullable=True)
     deposit = db.Column(db.Numeric(12, 2), nullable=True)
+    tenant_agreement_fee = db.Column(db.Numeric(12, 2), nullable=True)
     
     # Details
-    bedrooms = db.Column(db.Integer, nullable=False)
-    bathrooms = db.Column(db.Integer, nullable=False)
-    area = db.Column(db.Integer, nullable=False)  # in square meters
+    bedrooms = db.Column(db.Integer, nullable=True)
+    bathrooms = db.Column(db.Integer, nullable=True)
+    area = db.Column(db.Integer, nullable=True)  # in square meters
+    
+    # Multi-Unit Configuration & Map Location
+    units = db.Column(db.JSON, default=list)
+    location_description = db.Column(db.Text, nullable=True)
     
     # Amenities (stored as JSON array)
     amenities = db.Column(db.JSON, default=list)
@@ -128,11 +133,14 @@ class Property(db.Model):
             'address': self.address,
             'latitude': float(self.latitude) if self.latitude else None,
             'longitude': float(self.longitude) if self.longitude else None,
-            'price': float(self.price),
-            'deposit': float(self.deposit) if self.deposit else float(self.price),
+            'price': float(self.price) if self.price is not None else None,
+            'deposit': float(self.deposit) if self.deposit is not None else (float(self.price) if self.price is not None else None),
+            'tenant_agreement_fee': float(self.tenant_agreement_fee) if self.tenant_agreement_fee is not None else None,
             'bedrooms': self.bedrooms,
             'bathrooms': self.bathrooms,
             'area': self.area,
+            'units': self.units or [],
+            'location_description': self.location_description,
             'amenities': self.amenities or [],
             'images': self.images or [],
             'available_from': self.available_from.isoformat() if self.available_from else None,
