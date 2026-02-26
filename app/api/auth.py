@@ -11,6 +11,7 @@ from app.models.identity import Identity
 from app.utils.validators import validate_email, validate_phone, validate_password
 from app.utils.sanitizers import sanitize_string
 from app.utils.email import send_verification_email, send_password_reset_email
+from app.utils.sms import generate_otp, generate_otp_token, verify_otp_token, send_otp_sms
 from app.models.document import Document
 from werkzeug.utils import secure_filename
 import uuid
@@ -399,6 +400,38 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+@auth_bp.route('/kyc/send-otp', methods=['POST'])
+@jwt_required()
+def send_kyc_otp():
+    """Request an OTP for KYC phone verification."""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        
+        if not user or not user.is_landlord():
+            return jsonify({'message': 'Only landlords can request KYC OTPs.'}), 403
+            
+        data = request.get_json()
+        phone = data.get('phone', '').strip()
+        
+        if not phone or not validate_phone(phone):
+            return jsonify({'message': 'Valid phone number required.'}), 400
+            
+        otp = generate_otp()
+        success, info = send_otp_sms(phone, otp)
+        
+        # We always return the token so the frontend flow can proceed,
+        # even if trial Twilio block prevents the SMS from arriving (dev fallback).
+        token = generate_otp_token(phone, otp)
+        
+        return jsonify({
+            'message': 'OTP sent successfully (Check console if trial account).' if success else 'SMS skipped. See console.',
+            'otp_token': token
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to send OTP', 'error': str(e)}), 500
+
 @auth_bp.route('/kyc/submit', methods=['POST'])
 @jwt_required()
 def submit_kyc():
@@ -429,6 +462,16 @@ def submit_kyc():
             
         if not validate_phone(phone):
             return jsonify({'message': 'Invalid phone number format.'}), 400
+            
+        # Verify OTP
+        otp = request.form.get('otp', '').strip()
+        otp_token = request.form.get('otp_token', '').strip()
+        
+        if not otp or not otp_token:
+            return jsonify({'message': 'Phone verification OTP is required.'}), 400
+            
+        if not verify_otp_token(otp_token, phone, otp):
+            return jsonify({'message': 'Invalid or expired OTP code.'}), 400
             
         # Handle file upload
         if 'id_document' not in request.files:
