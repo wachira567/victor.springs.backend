@@ -456,13 +456,16 @@ def submit_kyc():
         last_name = request.form.get('last_name', '').strip()
         id_number = request.form.get('id_number', '').strip()
         phone = request.form.get('phone', '').strip()
-        signature_method = request.form.get('signature_method', 'electronic').strip()
+        digital_consent = request.form.get('digital_consent', 'false').lower() == 'true'
         
         if not first_name or not last_name or not id_number or not phone:
             return jsonify({'message': 'First name, last name, ID number, and phone are required.'}), 400
             
         if not validate_phone(phone):
             return jsonify({'message': 'Invalid phone number format.'}), 400
+            
+        if not digital_consent:
+            return jsonify({'message': 'You must agree to the digital consent terms.'}), 400
             
         # Verify OTP
         otp = request.form.get('otp', '').strip()
@@ -480,16 +483,6 @@ def submit_kyc():
         user.phone = phone
         user.verification_status = 'pending'
             
-        # Handle Electronic Signature vs Manual Upload
-        if signature_method == 'electronic':
-            # Dispatch Firma.dev Email Request
-            success, signature_id = generate_signature_request(user)
-            if success:
-                # We save the ID doc if they provided it natively at the same time
-                pass # Proceeding to save their physical National ID below
-            else:
-                 return jsonify({'message': f'Firma.dev E-Signature Failed (Ensure your API keys are correct). Error: {signature_id}. Please use Manual Signature instead for now.'}), 400
-        
         import cloudinary.uploader
         
         # 1. Validate and prep ID Documents
@@ -550,39 +543,53 @@ def submit_kyc():
         db.session.add(doc_front)
         db.session.add(doc_back)
         
-        # 4. Upload Consent Document if manual
-        if signature_method == 'manual':
-            if 'consent_document' not in request.files:
-                return jsonify({'message': 'Signed consent document is required for manual verification.'}), 400
-            consent_file = request.files['consent_document']
-            if consent_file.filename == '' or not allowed_file(consent_file.filename):
-                return jsonify({'message': 'No selected specific file or invalid format for Consent Document.'}), 400
-            consent_file_data = consent_file.read()
-            if len(consent_file_data) > MAX_FILE_SIZE:
-                return jsonify({'message': 'Consent File exceeds maximum 5MB size limit.'}), 400
-            consent_file.seek(0)
+        # 4. Generate Legal Clickwrap Consent Document Log
+        try:
+            from datetime import datetime
+            import io
             
-            try:
-                consent_upload_result = cloudinary.uploader.upload(
-                    consent_file,
-                    folder="victorsprings/kyc_documents",
-                    resource_type="auto"
-                )
-                consent_file_url = consent_upload_result.get("secure_url")
-            except Exception as e:
-                return jsonify({'message': 'Failed to upload Consent document to cloud storage.', 'error': str(e)}), 500
-                
-            doc_consent = Document(
-                user_id=user.id,
-                name=f"Manual Consent Agreement - {user.email}",
-                document_type='legal_document',
-                file_url=consent_file_url,
-                file_size=len(consent_file_data),
-                mime_type=consent_file.content_type,
-                status='pending',
-                is_accessible=True
+            consent_text = f"""
+LANDLORD REPRESENTATION & CONSENT AGREEMENT
+-----------------------------------------
+Name: {full_name}
+ID Number: {id_number}
+Phone: {phone}
+Email: {user.email}
+Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
+Consent Method: Verified Digital Clickwrap (OTP Verified Phone Session)
+
+Terms Consented To:
+1. Representation of Ownership or Authority
+2. Accuracy of Information
+3. Anti-Fraud & Legal Liability
+4. Data Processing Consent
+
+The user has explicitly checked "I Consent" to these terms under penalty of perjury.
+"""
+            consent_file_data = consent_text.encode('utf-8')
+            consent_file = io.BytesIO(consent_file_data)
+            
+            consent_upload_result = cloudinary.uploader.upload(
+                consent_file,
+                folder="victorsprings/kyc_documents",
+                resource_type="raw",
+                public_id=f"consent_{user.id}_{int(datetime.utcnow().timestamp())}.txt"
             )
-            db.session.add(doc_consent)
+            consent_file_url = consent_upload_result.get("secure_url")
+        except Exception as e:
+            return jsonify({'message': 'Failed to generate and upload digital consent log.', 'error': str(e)}), 500
+            
+        doc_consent = Document(
+            user_id=user.id,
+            name=f"Digital Consent Log - {user.email}",
+            document_type='legal_document',
+            file_url=consent_file_url,
+            file_size=len(consent_file_data),
+            mime_type='text/plain',
+            status='pending',
+            is_accessible=True
+        )
+        db.session.add(doc_consent)
             
         # Update User attributes
         user.id_document_url = f"{id_front_url},{id_back_url}"
