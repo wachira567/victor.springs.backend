@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 admin_reports_bp = Blueprint('admin_reports', __name__)
 
-@admin_reports_bp.route('/', methods=['GET'])
+@admin_reports_bp.route('/', methods=['GET'], strict_slashes=False)
 @jwt_required()
 def get_admin_reports():
     current_user_id = get_jwt_identity()
