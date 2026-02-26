@@ -19,3 +19,4 @@ phonenumbers==8.13.27
 google-auth==2.26.2
 resend==2.1.0
 itsdangerous==2.2.0
+twilio>=8.2.2
