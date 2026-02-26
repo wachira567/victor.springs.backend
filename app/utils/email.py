@@ -23,7 +23,7 @@ def send_verification_email(to_email, token):
         """
 
         params = {
-            "from": os.environ.get('MAIL_FROM', 'Victor Springs <noreply@victorspringslimited.qzz.io>'),
+            "from": os.environ.get('MAIL_FROM', 'Victor Springs <onboarding@resend.dev>'),
             "to": [to_email],
             "subject": "Verify your email address - Victor Springs",
             "html": html_content
@@ -56,7 +56,7 @@ def send_password_reset_email(to_email, token):
         """
 
         params = {
-            "from": os.environ.get('MAIL_FROM', 'Victor Springs <noreply@victorspringslimited.qzz.io>'),
+            "from": os.environ.get('MAIL_FROM', 'Victor Springs <onboarding@resend.dev>'),
             "to": [to_email],
             "subject": "Reset your password - Victor Springs",
             "html": html_content
