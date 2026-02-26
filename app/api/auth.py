@@ -81,7 +81,7 @@ def google_auth():
         db.session.commit()
         
         # 3. Log them in!
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'message': 'Google Login successful',
@@ -191,7 +191,7 @@ def login():
         db.session.commit()
         
         # Generate token
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'message': 'Login successful',
@@ -315,7 +315,7 @@ def verify_email():
         db.session.commit()
         
         # Auto login the user upon verification success
-        access_token = create_access_token(identity=user.id)
+        access_token = create_access_token(identity=str(user.id))
         
         return jsonify({
             'message': 'Email verified successfully.',
