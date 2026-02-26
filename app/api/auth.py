@@ -567,19 +567,17 @@ def submit_kyc():
             
         # Update User attributes
         user.id_document_url = id_file_url
-            
-            db.session.commit()
-            
-            msg = 'Verification request submitted. Our team will review it shortly.'
-            if signature_method == 'electronic':
-                msg = 'Identity uploaded. Please check your email to electronically sign the Victor Springs Landlord Agreement to finalize verification.'
-            
-            return jsonify({
-                'message': msg,
-                'signature_method': signature_method
-            }), 200
-            
+        
         db.session.commit()
+        
+        msg = 'Verification request submitted. Our team will review it shortly.'
+        if signature_method == 'electronic':
+            msg = 'Identity uploaded. Please check your email to electronically sign the Victor Springs Landlord Agreement to finalize verification.'
+        
+        return jsonify({
+            'message': msg,
+            'signature_method': signature_method
+        }), 200
 
     except Exception as e:
         db.session.rollback()
