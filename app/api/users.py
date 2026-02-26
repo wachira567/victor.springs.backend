@@ -8,6 +8,29 @@ from app.utils.sanitizers import sanitize_string
 users_bp = Blueprint('users', __name__)
 
 
+@users_bp.route('/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """Update the current user's profile information"""
+    try:
+        user_id = get_jwt_identity()
+        user = User.query.get_or_404(user_id)
+        
+        data = request.get_json()
+        if 'name' in data and data['name'].strip():
+            user.name = sanitize_string(data['name'].strip())
+            
+        db.session.commit()
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': 'Failed to update profile', 'error': str(e)}), 500
+
+
 @users_bp.route('/', methods=['GET'], strict_slashes=False)
 @jwt_required()
 @admin_required

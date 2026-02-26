@@ -79,6 +79,7 @@ def create_app(config_name=None):
     from app.api.enquiries import enquiries_bp
     from app.api.settings import settings_bp
     from app.api.applications import applications_bp
+    from app.api.admin_reports import admin_reports_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(properties_bp, url_prefix='/api/properties')
@@ -88,6 +89,7 @@ def create_app(config_name=None):
     app.register_blueprint(enquiries_bp, url_prefix='/api/enquiries')
     app.register_blueprint(settings_bp, url_prefix='/api/settings')
     app.register_blueprint(applications_bp, url_prefix='/api/applications')
+    app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
     
     # Error handlers
     @app.errorhandler(429)
