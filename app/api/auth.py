@@ -12,6 +12,7 @@ from app.utils.validators import validate_email, validate_phone, validate_passwo
 from app.utils.sanitizers import sanitize_string
 from app.utils.email import send_verification_email, send_password_reset_email
 from app.utils.sms import generate_otp, generate_otp_token, verify_otp_token, send_otp_sms
+from app.utils.signature import generate_signature_request
 from app.models.document import Document
 from werkzeug.utils import secure_filename
 import uuid
@@ -473,7 +474,23 @@ def submit_kyc():
         if not verify_otp_token(otp_token, phone, otp):
             return jsonify({'message': 'Invalid or expired OTP code.'}), 400
             
-        # Handle file upload
+        full_name = f"{first_name} {middle_name} {last_name}".replace('  ', ' ')
+        user.name = full_name
+        user.id_number = id_number
+        user.phone = phone
+        user.verification_status = 'pending'
+            
+        # Handle Electronic Signature vs Manual Upload
+        if signature_method == 'electronic':
+            # Dispatch Firma.dev Email Request
+            success, signature_id = generate_signature_request(user)
+            if success:
+                # We save the ID doc if they provided it natively at the same time
+                pass # Proceeding to save their physical National ID below
+            else:
+                 return jsonify({'message': f'Firma.dev API Error: {signature_id}'}), 500
+        
+        # Handle file upload for both Manual Document (if merged) and National ID Scan
         if 'id_document' not in request.files:
             return jsonify({'message': 'No ID document provided.'}), 400
             
@@ -515,17 +532,16 @@ def submit_kyc():
             db.session.add(doc)
             
             # Update User metrics
-            full_name = f"{first_name} {middle_name} {last_name}".replace('  ', ' ')
-            user.name = full_name
-            user.id_number = id_number
-            user.phone = phone
             user.id_document_url = file_url
-            user.verification_status = 'pending'
             
             db.session.commit()
             
+            msg = 'Verification request submitted. Our team will review it shortly.'
+            if signature_method == 'electronic':
+                msg = 'Identity uploaded. Please check your email to electronically sign the Victor Springs Landlord Agreement to finalize verification.'
+            
             return jsonify({
-                'message': 'Verification request submitted successfully. Our team will review it shortly.',
+                'message': msg,
                 'signature_method': signature_method
             }), 200
             
