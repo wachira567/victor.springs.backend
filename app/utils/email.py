@@ -16,10 +16,12 @@ def send_verification_email(to_email, token):
         html_content = f"""
         <h2>Welcome to Victor Springs!</h2>
         <p>Thank you for registering. Please click the button below to verify your email address and activate your account:</p>
-        <a href="{verify_link}" style="display:inline-block;padding:10px 20px;background-color:#2196F3;color:white;text-decoration:none;border-radius:5px;">Verify Email</a>
+        <br>
+        <center>
+            <a href="{verify_link}" style="display:inline-block;padding:12px 24px;background-color:#2196F3;color:white;text-decoration:none;border-radius:5px;font-weight:bold;font-size:16px;">Verify Email</a>
+        </center>
+        <br>
         <p>If you did not create this account, you can safely ignore this email.</p>
-        <p>Alternatively, you can copy and paste this link into your browser:</p>
-        <p>{verify_link}</p>
         """
 
         params = {
@@ -49,10 +51,12 @@ def send_password_reset_email(to_email, token):
         html_content = f"""
         <h2>Reset Your Password</h2>
         <p>We received a request to reset the password for your Victor Springs account. Click the button below to choose a new password:</p>
-        <a href="{reset_link}" style="display:inline-block;padding:10px 20px;background-color:#2196F3;color:white;text-decoration:none;border-radius:5px;">Reset Password</a>
+        <br>
+        <center>
+            <a href="{reset_link}" style="display:inline-block;padding:12px 24px;background-color:#2196F3;color:white;text-decoration:none;border-radius:5px;font-weight:bold;font-size:16px;">Reset Password</a>
+        </center>
+        <br>
         <p>If you did not request a password reset, you can safely ignore this email. Your password will remain unchanged.</p>
-        <p>Alternatively, you can copy and paste this link into your browser:</p>
-        <p>{reset_link}</p>
         """
 
         params = {
