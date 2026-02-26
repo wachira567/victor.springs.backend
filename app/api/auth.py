@@ -488,7 +488,7 @@ def submit_kyc():
                 # We save the ID doc if they provided it natively at the same time
                 pass # Proceeding to save their physical National ID below
             else:
-                 return jsonify({'message': f'Firma.dev API Error: {signature_id}'}), 500
+                 return jsonify({'message': f'Firma.dev E-Signature Failed (Ensure your API keys are correct). Error: {signature_id}. Please use Manual Signature instead for now.'}), 400
         
         import cloudinary.uploader
         
@@ -552,6 +552,16 @@ def submit_kyc():
         
         # 4. Upload Consent Document if manual
         if signature_method == 'manual':
+            if 'consent_document' not in request.files:
+                return jsonify({'message': 'Signed consent document is required for manual verification.'}), 400
+            consent_file = request.files['consent_document']
+            if consent_file.filename == '' or not allowed_file(consent_file.filename):
+                return jsonify({'message': 'No selected specific file or invalid format for Consent Document.'}), 400
+            consent_file_data = consent_file.read()
+            if len(consent_file_data) > MAX_FILE_SIZE:
+                return jsonify({'message': 'Consent File exceeds maximum 5MB size limit.'}), 400
+            consent_file.seek(0)
+            
             try:
                 consent_upload_result = cloudinary.uploader.upload(
                     consent_file,
