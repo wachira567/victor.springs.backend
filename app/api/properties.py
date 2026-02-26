@@ -5,6 +5,7 @@ from app import db
 from app.models.property import Property
 from app.models.user import User
 from app.models.property_like import PropertyLike
+from app.services.cloudinary_service import CloudinaryService
 from app.utils.decorators import admin_required, landlord_required
 from app.utils.sanitizers import sanitize_string
 
@@ -125,7 +126,19 @@ def create_property():
         if user and not user.is_super_admin() and not user.is_landlord_verified:
             return jsonify({'message': 'You must complete Landlord Identity Verification (KYC) before listing properties.'}), 403
             
-        data = request.get_json()
+        import json
+        
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+            # Parse stringified lists from FormData
+            for field in ['units', 'amenities', 'images']:
+                if field in data and isinstance(data[field], str):
+                    try:
+                        data[field] = json.loads(data[field])
+                    except json.JSONDecodeError:
+                        data[field] = []
         
         # Sanitize inputs
         title = sanitize_string(data.get('title', '')).strip()
@@ -163,11 +176,25 @@ def create_property():
         )
         
         # Handle Tenant Agreement Upload
+        cloudinary = CloudinaryService()
         tenant_agreement = request.files.get('tenant_agreement_file')
         if tenant_agreement:
             url = cloudinary.upload_document(tenant_agreement, folder='tenant_agreements')
             if url:
                 property.tenant_agreement_url = url
+                
+        # Handle Property Image Uploads
+        image_files = request.files.getlist('images')
+        uploaded_image_urls = []
+        if image_files:
+            for image_file in image_files:
+                if image_file.filename != '':
+                    img_url = cloudinary.upload_image(image_file, folder='property_images')
+                    if img_url:
+                        uploaded_image_urls.append(img_url)
+        
+        # Merge with existing images if any came from JSON 
+        property.images = property.images + uploaded_image_urls if property.images else uploaded_image_urls
                 
         db.session.add(property)
         db.session.commit()
