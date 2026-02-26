@@ -490,49 +490,83 @@ def submit_kyc():
             else:
                  return jsonify({'message': f'Firma.dev API Error: {signature_id}'}), 500
         
-        # Handle file upload for both Manual Document (if merged) and National ID Scan
+        import cloudinary.uploader
+        
+        # 1. Validate and prep ID Document
         if 'id_document' not in request.files:
             return jsonify({'message': 'No ID document provided.'}), 400
-            
-        file = request.files['id_document']
+        id_file = request.files['id_document']
+        if id_file.filename == '' or not allowed_file(id_file.filename):
+            return jsonify({'message': 'No selected ID file or invalid format.'}), 400
+        id_file_data = id_file.read()
+        if len(id_file_data) > MAX_FILE_SIZE:
+            return jsonify({'message': 'ID File exceeds maximum 5MB size limit.'}), 400
+        id_file.seek(0)
         
-        if file.filename == '':
-            return jsonify({'message': 'No selected file.'}), 400
+        # 2. Validate and prep Consent Document if manual
+        consent_file = None
+        consent_file_data = b""
+        if signature_method == 'manual':
+            if 'consent_document' not in request.files:
+                return jsonify({'message': 'Signed consent document is required for manual verification.'}), 400
+            consent_file = request.files['consent_document']
+            if consent_file.filename == '' or not allowed_file(consent_file.filename):
+                return jsonify({'message': 'No selected specific file or invalid format for Consent Document.'}), 400
+            consent_file_data = consent_file.read()
+            if len(consent_file_data) > MAX_FILE_SIZE:
+                return jsonify({'message': 'Consent File exceeds maximum 5MB size limit.'}), 400
+            consent_file.seek(0)
             
-        input_file_data = file.read()
-        if len(input_file_data) > MAX_FILE_SIZE:
-            return jsonify({'message': 'File exceeds maximum 5MB size limit.'}), 400
-        file.seek(0) # Reset pointer
+        # 3. Upload ID Document to Cloudinary
+        try:
+            id_upload_result = cloudinary.uploader.upload(
+                id_file,
+                folder="victorsprings/kyc_documents",
+                resource_type="auto"
+            )
+            id_file_url = id_upload_result.get("secure_url")
+        except Exception as e:
+            return jsonify({'message': 'Failed to upload ID document to cloud storage.', 'error': str(e)}), 500
             
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            unique_filename = f"{uuid.uuid4().hex}_{filename}"
-            
-            # Configure upload directory
-            upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'kyc')
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            file_path = os.path.join(upload_dir, unique_filename)
-            file.save(file_path)
-            
-            # File URL path for frontend use (served via static)
-            file_url = f"/static/uploads/kyc/{unique_filename}"
-            
-            # Create a Document log
-            doc = Document(
+        # Create Document log for ID
+        doc = Document(
+            user_id=user.id,
+            name=f"National ID/Passport - {user.email}",
+            document_type='id_document',
+            file_url=id_file_url,
+            file_size=len(id_file_data),
+            mime_type=id_file.content_type,
+            status='pending',
+            is_accessible=True
+        )
+        db.session.add(doc)
+        
+        # 4. Upload Consent Document if manual
+        if signature_method == 'manual':
+            try:
+                consent_upload_result = cloudinary.uploader.upload(
+                    consent_file,
+                    folder="victorsprings/kyc_documents",
+                    resource_type="auto"
+                )
+                consent_file_url = consent_upload_result.get("secure_url")
+            except Exception as e:
+                return jsonify({'message': 'Failed to upload Consent document to cloud storage.', 'error': str(e)}), 500
+                
+            doc_consent = Document(
                 user_id=user.id,
-                name=f"National ID/Passport - {user.email}",
-                document_type='id_document',
-                file_url=file_url,
-                file_size=len(input_file_data),
-                mime_type=file.content_type,
+                name=f"Manual Consent Agreement - {user.email}",
+                document_type='legal_document',
+                file_url=consent_file_url,
+                file_size=len(consent_file_data),
+                mime_type=consent_file.content_type,
                 status='pending',
                 is_accessible=True
             )
-            db.session.add(doc)
+            db.session.add(doc_consent)
             
-            # Update User metrics
-            user.id_document_url = file_url
+        # Update User attributes
+        user.id_document_url = id_file_url
             
             db.session.commit()
             
@@ -545,7 +579,7 @@ def submit_kyc():
                 'signature_method': signature_method
             }), 200
             
-        return jsonify({'message': 'File type not allowed. Must be PNG, JPG, JPEG, or PDF.'}), 400
+        db.session.commit()
 
     except Exception as e:
         db.session.rollback()
