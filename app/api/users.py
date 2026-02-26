@@ -8,7 +8,7 @@ from app.utils.sanitizers import sanitize_string
 users_bp = Blueprint('users', __name__)
 
 
-@users_bp.route('/', methods=['GET'])
+@users_bp.route('/', methods=['GET'], strict_slashes=False)
 @jwt_required()
 @admin_required
 def get_users():

@@ -8,7 +8,7 @@ from app.models.user import User
 visits_bp = Blueprint('visits', __name__)
 
 
-@visits_bp.route('/', methods=['GET'])
+@visits_bp.route('/', methods=['GET'], strict_slashes=False)
 @jwt_required()
 def get_visits():
     """Get visits for the current user"""

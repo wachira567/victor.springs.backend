@@ -10,7 +10,7 @@ from app.utils.sanitizers import sanitize_string
 properties_bp = Blueprint('properties', __name__)
 
 
-@properties_bp.route('/', methods=['GET'])
+@properties_bp.route('/', methods=['GET'], strict_slashes=False)
 def get_properties():
     """Get all properties with filters"""
     try:
@@ -95,7 +95,7 @@ def get_property(property_id):
         return jsonify({'message': 'Failed to fetch property', 'error': str(e)}), 500
 
 
-@properties_bp.route('/', methods=['POST'])
+@properties_bp.route('/', methods=['POST'], strict_slashes=False)
 @jwt_required()
 @landlord_required
 def create_property():

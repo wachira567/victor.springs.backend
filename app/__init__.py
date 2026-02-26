@@ -8,7 +8,9 @@ from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 import cloudinary
 import os
+import os
 from dotenv import load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 load_dotenv()
 
@@ -22,6 +24,9 @@ limiter = Limiter(
 
 def create_app(config_name=None):
     app = Flask(__name__)
+    
+    # Trust reverse proxy headers (e.g. from Render)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     
     # Configuration
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
