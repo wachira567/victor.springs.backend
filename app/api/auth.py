@@ -492,54 +492,63 @@ def submit_kyc():
         
         import cloudinary.uploader
         
-        # 1. Validate and prep ID Document
-        if 'id_document' not in request.files:
-            return jsonify({'message': 'No ID document provided.'}), 400
-        id_file = request.files['id_document']
-        if id_file.filename == '' or not allowed_file(id_file.filename):
-            return jsonify({'message': 'No selected ID file or invalid format.'}), 400
-        id_file_data = id_file.read()
-        if len(id_file_data) > MAX_FILE_SIZE:
-            return jsonify({'message': 'ID File exceeds maximum 5MB size limit.'}), 400
-        id_file.seek(0)
+        # 1. Validate and prep ID Documents
+        if 'id_document_front' not in request.files or 'id_document_back' not in request.files:
+            return jsonify({'message': 'Both front and back ID documents are required.'}), 400
+            
+        id_front = request.files['id_document_front']
+        id_back = request.files['id_document_back']
         
-        # 2. Validate and prep Consent Document if manual
-        consent_file = None
-        consent_file_data = b""
-        if signature_method == 'manual':
-            if 'consent_document' not in request.files:
-                return jsonify({'message': 'Signed consent document is required for manual verification.'}), 400
-            consent_file = request.files['consent_document']
-            if consent_file.filename == '' or not allowed_file(consent_file.filename):
-                return jsonify({'message': 'No selected specific file or invalid format for Consent Document.'}), 400
-            consent_file_data = consent_file.read()
-            if len(consent_file_data) > MAX_FILE_SIZE:
-                return jsonify({'message': 'Consent File exceeds maximum 5MB size limit.'}), 400
-            consent_file.seek(0)
+        if id_front.filename == '' or not allowed_file(id_front.filename):
+            return jsonify({'message': 'No selected Front ID file or invalid format.'}), 400
+        if id_back.filename == '' or not allowed_file(id_back.filename):
+            return jsonify({'message': 'No selected Back ID file or invalid format.'}), 400
             
-        # 3. Upload ID Document to Cloudinary
+        id_front_data = id_front.read()
+        id_back_data = id_back.read()
+        
+        if len(id_front_data) > MAX_FILE_SIZE or len(id_back_data) > MAX_FILE_SIZE:
+            return jsonify({'message': 'ID Files exceed maximum 5MB size limit.'}), 400
+            
+        id_front.seek(0)
+        id_back.seek(0)
+        
+        # 2. Upload ID Documents to Cloudinary
         try:
-            id_upload_result = cloudinary.uploader.upload(
-                id_file,
-                folder="victorsprings/kyc_documents",
-                resource_type="auto"
+            front_upload = cloudinary.uploader.upload(
+                id_front, folder="victorsprings/kyc_documents", resource_type="auto"
             )
-            id_file_url = id_upload_result.get("secure_url")
+            back_upload = cloudinary.uploader.upload(
+                id_back, folder="victorsprings/kyc_documents", resource_type="auto"
+            )
+            id_front_url = front_upload.get("secure_url")
+            id_back_url = back_upload.get("secure_url")
         except Exception as e:
-            return jsonify({'message': 'Failed to upload ID document to cloud storage.', 'error': str(e)}), 500
+            return jsonify({'message': 'Failed to upload ID documents to cloud storage.', 'error': str(e)}), 500
             
-        # Create Document log for ID
-        doc = Document(
+        # Create Document logs for ID Front and Back
+        doc_front = Document(
             user_id=user.id,
-            name=f"National ID/Passport - {user.email}",
+            name=f"National ID/Passport (Front) - {user.email}",
             document_type='id_document',
-            file_url=id_file_url,
-            file_size=len(id_file_data),
-            mime_type=id_file.content_type,
+            file_url=id_front_url,
+            file_size=len(id_front_data),
+            mime_type=id_front.content_type,
             status='pending',
             is_accessible=True
         )
-        db.session.add(doc)
+        doc_back = Document(
+            user_id=user.id,
+            name=f"National ID/Passport (Back) - {user.email}",
+            document_type='id_document',
+            file_url=id_back_url,
+            file_size=len(id_back_data),
+            mime_type=id_back.content_type,
+            status='pending',
+            is_accessible=True
+        )
+        db.session.add(doc_front)
+        db.session.add(doc_back)
         
         # 4. Upload Consent Document if manual
         if signature_method == 'manual':
@@ -566,7 +575,7 @@ def submit_kyc():
             db.session.add(doc_consent)
             
         # Update User attributes
-        user.id_document_url = id_file_url
+        user.id_document_url = f"{id_front_url},{id_back_url}"
         
         db.session.commit()
         
