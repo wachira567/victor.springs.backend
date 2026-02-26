@@ -140,6 +140,30 @@ def get_pending_kyc():
     except Exception as e:
         return jsonify({'message': 'Failed to fetch KYC requests', 'error': str(e)}), 500
 
+@users_bp.route('/kyc/all', methods=['GET'])
+@jwt_required()
+@admin_required
+def get_all_kyc():
+    """Get all KYC verification requests (admin only)"""
+    try:
+        from app.models.document import Document
+        # Only fetch landlords who have at least started KYC (status not pending, or have documents)
+        kyc_users = User.query.filter(User.role == 'landlord', User.id_number.isnot(None)).all()
+        results = []
+        for user in kyc_users:
+            docs = Document.query.filter_by(user_id=user.id).filter(Document.document_type.in_(['id_document', 'legal_document'])).all()
+            if docs:
+                results.append({
+                    'user': user.to_dict(include_sensitive=True),
+                    'documents': [d.to_dict(include_file_url=True) for d in docs]
+                })
+                
+        return jsonify({'requests': results}), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch all KYC data', 'error': str(e)}), 500
+
+
 @users_bp.route('/kyc/<int:user_id>/approve', methods=['POST'])
 @jwt_required()
 @admin_required

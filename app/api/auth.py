@@ -605,12 +605,9 @@ The user has explicitly checked "I Consent" to these terms under penalty of perj
         db.session.commit()
         
         msg = 'Verification request submitted. Our team will review it shortly.'
-        if signature_method == 'electronic':
-            msg = 'Identity uploaded. Please check your email to electronically sign the Victor Springs Landlord Agreement to finalize verification.'
         
         return jsonify({
-            'message': msg,
-            'signature_method': signature_method
+            'message': msg
         }), 200
 
     except Exception as e:
