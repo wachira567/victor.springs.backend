@@ -548,6 +548,9 @@ def submit_kyc():
             from datetime import datetime
             import io
             
+            ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+            user_agent = request.headers.get('User-Agent', 'Unknown Device')
+            
             consent_text = f"""
 LANDLORD REPRESENTATION & CONSENT AGREEMENT
 -----------------------------------------
@@ -557,6 +560,11 @@ Phone: {phone}
 Email: {user.email}
 Timestamp: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}
 Consent Method: Verified Digital Clickwrap (OTP Verified Phone Session)
+
+--- FORENSIC AUDIT TRAIL ---
+IP Address: {ip_address}
+Device Fingerprint: {user_agent}
+----------------------------
 
 Terms Consented To:
 1. Representation of Ownership or Authority
