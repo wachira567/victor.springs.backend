@@ -25,7 +25,7 @@ class User(db.Model):
     company_name = db.Column(db.String(255), nullable=True)
     company_registration = db.Column(db.String(100), nullable=True)
     is_landlord_verified = db.Column(db.Boolean, default=False)
-    verification_status = db.Column(db.String(20), default='pending') # pending, verified, rejected
+    verification_status = db.Column(db.String(20), default='unsubmitted') # unsubmitted, pending, verified, rejected
     
     # Tenant specific fields
     employment_status = db.Column(db.String(50), nullable=True)
