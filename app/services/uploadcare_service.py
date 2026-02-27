@@ -50,7 +50,8 @@ class UploadcareService:
                 data = resp.json()
                 file_uuid = data.get('file')
                 if file_uuid:
-                    cdn_url = f"{self.BASE_CDN_URL}/{file_uuid}/{fname}"
+                    # Use UUID-only URL — appending filename causes 404 on Uploadcare CDN
+                    cdn_url = f"{self.BASE_CDN_URL}/{file_uuid}/"
                     return cdn_url
             
             print(f"Uploadcare upload failed: {resp.status_code} {resp.text}")
