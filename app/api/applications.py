@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
+from sqlalchemy.orm.attributes import flag_modified
 from app.models.tenant_application import TenantApplication
 from app.models.property import Property
 from app.models.user import User
@@ -202,6 +203,7 @@ def update_application_status(app_id):
                 all_occupied = all(u.get('vacantCount', 0) <= 0 for u in units)
                 
                 property.units = units
+                flag_modified(property, 'units')  # Force SQLAlchemy to detect JSON change
                 
                 # If all units are occupied, mark property as rented
                 if all_occupied:
