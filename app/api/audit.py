@@ -73,3 +73,31 @@ def get_audit_logs():
         }), 200
     except Exception as e:
         return jsonify({'message': 'Failed to fetch audit logs', 'error': str(e)}), 500
+
+@audit_bp.route('/my', methods=['GET'])
+@jwt_required()
+def get_my_audit_logs():
+    """Endpoint for regular users to fetch their own activity/notifications"""
+    try:
+        from flask_jwt_extended import get_jwt_identity
+        user_id = get_jwt_identity()
+        
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        
+        # We only want to show relevant "notification-style" logs to the user
+        # e.g. status changes, payment confirmations, etc.
+        query = AuditLog.query.filter(AuditLog.user_id == user_id)
+        
+        logs = query.order_by(AuditLog.created_at.desc()).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
+        
+        return jsonify({
+            'logs': [log.to_dict() for log in logs.items],
+            'total': logs.total,
+            'page': logs.page,
+            'pages': logs.pages
+        }), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch your activity', 'error': str(e)}), 500
