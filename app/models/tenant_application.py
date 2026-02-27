@@ -24,7 +24,7 @@ class TenantApplication(db.Model):
     digital_consent_ip = db.Column(db.String(100), nullable=True)
     
     # Status and links
-    status = db.Column(db.String(50), default='pending') # pending, approved, rejected
+    status = db.Column(db.String(50), default='pending_approval') # pending_approval, approved, rejected
     payment_id = db.Column(db.Integer, db.ForeignKey('payments.id'), nullable=True)
     assigned_unit = db.Column(db.String(100), nullable=True)
     

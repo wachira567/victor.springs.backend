@@ -108,7 +108,22 @@ def get_property(property_id):
         property.increment_views()
         db.session.commit()
         
-        return jsonify({'property': property.to_dict(include_landlord=True)}), 200
+        property_data = property.to_dict(include_landlord=True)
+        
+        # Check if current user likes this property
+        is_liked = False
+        try:
+            if verify_jwt_in_request(optional=True):
+                user_id = get_jwt_identity()
+                if user_id:
+                    like = PropertyLike.query.filter_by(user_id=user_id, property_id=property_id).first()
+                    is_liked = bool(like)
+        except Exception:
+            pass
+            
+        property_data['is_liked'] = is_liked
+        
+        return jsonify({'property': property_data}), 200
         
     except Exception as e:
         return jsonify({'message': 'Failed to fetch property', 'error': str(e)}), 500
@@ -603,3 +618,23 @@ def record_property_interaction(property_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'message': 'Failed to record interaction', 'error': str(e)}), 500
+@properties_bp.route('/liked', methods=['GET'])
+@jwt_required()
+def get_liked_properties():
+    """Get all properties liked by the current user"""
+    try:
+        user_id = get_jwt_identity()
+        
+        # Join PropertyLike with Property to get liked properties
+        liked_properties = db.session.query(Property).join(
+            PropertyLike, Property.id == PropertyLike.property_id
+        ).filter(
+            PropertyLike.user_id == user_id
+        ).all()
+        
+        return jsonify({
+            'properties': [p.to_dict() for p in liked_properties]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch liked properties', 'error': str(e)}), 500

@@ -5,6 +5,9 @@ from app.models.payment import Payment
 from app.models.property import Property
 from app.models.user import User
 from app.services.mpesa import MpesaService
+from app.utils.sms import send_otp_sms
+from app.utils.email import send_payment_notification_email
+from app.models.setting import Setting
 import os
 
 payments_bp = Blueprint('payments', __name__)
@@ -111,18 +114,29 @@ def mpesa_callback():
             
             payment.complete(receipt_number)
             
-            # If agreement fee, find application and link payment (simplified approach)
-            if payment.payment_type == 'agreement_fee':
-                # The frontend submits application *after* the payment,
-                # but we just need the payment to be marked as complete so it's valid.
-                pass
-                
-            # If partnership fee, update property status
-            if payment.payment_type == 'partnership_fee' and payment.property_id:
-                property = Property.query.get(payment.property_id)
-                if property:
-                    property.mark_fee_paid()
-            
+            # Link property for context
+            property_title = "N/A"
+            if payment.property_id:
+                prop = Property.query.get(payment.property_id)
+                if prop:
+                    property_title = prop.title
+
+            # Notify Admin
+            admin_email_setting = Setting.query.filter_by(key='primary_admin_email').first()
+            if admin_email_setting and admin_email_setting.value:
+                send_payment_notification_email(admin_email_setting.value, {
+                    'payment_type': payment.payment_type.replace('_', ' ').capitalize(),
+                    'amount': str(payment.amount),
+                    'tenant_name': payment.user.name if payment.user else 'Unknown',
+                    'phone': payment.phone_number,
+                    'property_title': property_title,
+                    'receipt_number': receipt_number
+                })
+
+            # Notify Tenant via SMS
+            sms_message = f"Payment of KES {payment.amount} for {payment.payment_type.replace('_', ' ')} received successfully. Ref: {receipt_number}. Thank you!"
+            send_otp_sms(payment.phone_number, sms_message)
+
             db.session.commit()
             
             return jsonify({'message': 'Payment completed successfully'}), 200

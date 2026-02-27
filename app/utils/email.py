@@ -89,3 +89,44 @@ def send_password_reset_email(to_email, token):
     except Exception as e:
         print(f"Failed to send password reset email: {e}")
         return False
+def send_payment_notification_email(admin_email, payment_details):
+    """Notify admin of a successful tenant payment."""
+    try:
+        resend.api_key = os.environ.get('RESEND_API_KEY')
+        if not resend.api_key:
+            return False
+
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <div style="background-color: #4CAF50; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0; font-size: 24px;">💰 New Payment Received</h2>
+            </div>
+            <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+                <p>A new payment has been successfully processed on Victor Springs.</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><b>Type:</b></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{payment_details.get('payment_type', 'N/A')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><b>Amount:</b></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">KES {payment_details.get('amount', '0')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><b>Tenant:</b></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{payment_details.get('tenant_name', 'N/A')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><b>Phone:</b></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{payment_details.get('phone', 'N/A')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><b>House:</b></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{payment_details.get('property_title', 'N/A')}</td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #ddd;"><b>Reference:</b></td><td style="padding: 8px; border-bottom: 1px solid #ddd;">{payment_details.get('receipt_number', 'N/A')}</td></tr>
+                </table>
+                <div style="text-align: center; margin-top: 30px; color: #666; font-size: 12px;">
+                    <p>&copy; 2026 Victor Springs Limited. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+        """
+
+        params = {
+            "from": os.environ.get('MAIL_FROM', 'Victor Springs <noreply@victorspringslimited.qzz.io>'),
+            "to": [admin_email],
+            "subject": f"New Payment: KES {payment_details.get('amount')} - {payment_details.get('tenant_name')}",
+            "html": html_content
+        }
+
+        email = resend.Emails.send(params)
+        return True
+    except Exception as e:
+        print(f"Failed to send payment notification email: {e}")
+        return False
