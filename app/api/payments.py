@@ -214,11 +214,38 @@ def get_all_payments():
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)
         status = request.args.get('status', '').strip()
+        payment_type = request.args.get('payment_type', '').strip()
+        search = request.args.get('search', '').strip()
+        date_from = request.args.get('date_from', '').strip()
+        date_to = request.args.get('date_to', '').strip()
         
-        query = Payment.query
+        query = Payment.query.join(User)
         
         if status:
-            query = query.filter_by(status=status)
+            query = query.filter(Payment.status == status)
+        
+        if payment_type:
+            query = query.filter(Payment.payment_type == payment_type)
+            
+        if search:
+            query = query.filter(
+                (User.name.ilike(f'%{search}%')) | 
+                (User.email.ilike(f'%{search}%')) | 
+                (Payment.mpesa_receipt_number.ilike(f'%{search}%')) |
+                (Payment.phone_number.ilike(f'%{search}%'))
+            )
+            
+        if date_from:
+            try:
+                df = datetime.fromisoformat(date_from)
+                query = query.filter(Payment.created_at >= df)
+            except: pass
+            
+        if date_to:
+            try:
+                dt = datetime.fromisoformat(date_to)
+                query = query.filter(Payment.created_at <= dt)
+            except: pass
         
         pagination = query.order_by(Payment.created_at.desc()).paginate(
             page=page, per_page=per_page, error_out=False
