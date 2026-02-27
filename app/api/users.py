@@ -119,7 +119,7 @@ def update_user_status(user_id):
     """Ban or unban a user by toggling is_active"""
     try:
         user = User.query.get_or_404(user_id)
-        current_admin = User.query.get(get_jwt_identity())
+        current_admin = User.query.get(int(get_jwt_identity()))
         
         if user.is_super_admin() and current_admin.id != user.id:
             return jsonify({'message': 'Cannot ban a Super Admin'}), 403
