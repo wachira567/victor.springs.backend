@@ -36,8 +36,7 @@ class CloudinaryService:
             result = cloudinary.uploader.upload(
                 file,
                 folder=folder,
-                resource_type='raw',
-                access_mode='public'
+                resource_type='auto'
             )
             return result.get('secure_url')
         except Exception as e:
