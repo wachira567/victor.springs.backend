@@ -46,6 +46,10 @@ def create_app(config_name=None):
         api_secret=os.getenv('CLOUDINARY_API_SECRET')
     )
     
+    # Uploadcare configuration
+    app.config['UPLOADCARE_PUBLIC_KEY'] = os.getenv('UPLOADCARE_PUBLIC_KEY', '')
+    app.config['UPLOADCARE_SECRET_KEY'] = os.getenv('UPLOADCARE_SECRET_KEY', '')
+    
     # Initialize extensions
     db.init_app(app)
     migrate.init_app(app, db)

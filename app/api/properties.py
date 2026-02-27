@@ -214,13 +214,13 @@ def create_property():
             is_partner_property=True
         )
         
-        # Handle Tenant Agreement Upload
+        # Handle Tenant Agreement Upload (dual: Uploadcare primary + Cloudinary backup)
         cloudinary = CloudinaryService()
         tenant_agreement = request.files.get('tenant_agreement_file')
         if tenant_agreement:
-            url = cloudinary.upload_document(tenant_agreement, folder='tenant_agreements')
-            if url:
-                property.tenant_agreement_url = url
+            result = cloudinary.upload_document_dual(tenant_agreement, folder='tenant_agreements')
+            if result.get('primary_url'):
+                property.tenant_agreement_url = result['primary_url']
                 
         # Handle Property Image Uploads
         image_files = request.files.getlist('images')
@@ -356,13 +356,13 @@ def update_property(property_id):
             if 'admin_edited_description' in data:
                 property.admin_edited_description = sanitize_string(data['admin_edited_description']).strip()
         
-        # Handle New Tenant Agreement Upload
+        # Handle New Tenant Agreement Upload (dual: Uploadcare primary + Cloudinary backup)
         cloudinary = CloudinaryService()
         tenant_agreement = request.files.get('tenant_agreement_file')
         if tenant_agreement:
-            url = cloudinary.upload_document(tenant_agreement, folder='tenant_agreements')
-            if url:
-                property.tenant_agreement_url = url
+            result = cloudinary.upload_document_dual(tenant_agreement, folder='tenant_agreements')
+            if result.get('primary_url'):
+                property.tenant_agreement_url = result['primary_url']
                 
         # Handle New Property Image Uploads
         image_files = request.files.getlist('images')

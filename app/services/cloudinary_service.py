@@ -5,8 +5,6 @@ from flask import current_app
 
 class CloudinaryService:
     def __init__(self):
-        # Configure cloudinary if current_app is available, 
-        # otherwise assumes it's configured elsewhere setup
         try:
             cloudinary.config(
                 cloud_name=current_app.config['CLOUDINARY_CLOUD_NAME'],
@@ -14,7 +12,6 @@ class CloudinaryService:
                 api_secret=current_app.config['CLOUDINARY_API_SECRET']
             )
         except Exception as e:
-            # Silently pass if config is missing during init, as it might be configured globally
             pass
             
     def upload_image(self, file, folder='victorsprings_images'):
@@ -31,7 +28,7 @@ class CloudinaryService:
             return None
             
     def upload_document(self, file, folder='victorsprings_documents'):
-        """Upload a generic document (like PDF) to Cloudinary and return the secure URL"""
+        """Upload a document to Cloudinary (backup) and return the secure URL"""
         try:
             result = cloudinary.uploader.upload(
                 file,
@@ -42,3 +39,28 @@ class CloudinaryService:
         except Exception as e:
             print(f"Cloudinary document upload error: {str(e)}")
             return None
+
+    def upload_document_dual(self, file, folder='victorsprings_documents', filename=None):
+        """Upload a document to both Uploadcare (primary) and Cloudinary (backup).
+        
+        Returns a dict with:
+            'primary_url': Uploadcare CDN URL (for downloads)
+            'backup_url': Cloudinary URL (for backup/audit)
+        """
+        from app.services.uploadcare_service import UploadcareService
+        
+        # Upload to Uploadcare first (primary delivery)
+        uploadcare = UploadcareService()
+        primary_url = uploadcare.upload_file(file, filename=filename)
+        
+        # Upload to Cloudinary as backup (file pointer was reset by Uploadcare service)
+        backup_url = self.upload_document(file, folder=folder)
+        
+        # If Uploadcare failed, fall back to Cloudinary URL  
+        if not primary_url:
+            primary_url = backup_url
+        
+        return {
+            'primary_url': primary_url,
+            'backup_url': backup_url
+        }
