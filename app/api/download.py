@@ -26,9 +26,10 @@ def proxy_download():
         return jsonify({'message': 'Untrusted file source'}), 403
     
     try:
-        # If it's a Cloudinary URL, inject fl_attachment for reliable PDF delivery
-        if 'cloudinary.com' in file_url and '/upload/' in file_url and 'fl_attachment' not in file_url:
-            file_url = file_url.replace('/upload/', '/upload/fl_attachment/')
+        # For Cloudinary image URLs: inject fl_attachment to force download
+        # Do NOT modify raw/ URLs — they don't support transformations
+        if 'cloudinary.com' in file_url and '/image/upload/' in file_url and 'fl_attachment' not in file_url:
+            file_url = file_url.replace('/image/upload/', '/image/upload/fl_attachment/')
         
         resp = http_requests.get(file_url, stream=True, timeout=30)
         

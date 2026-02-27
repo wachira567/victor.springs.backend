@@ -28,12 +28,18 @@ class CloudinaryService:
             return None
             
     def upload_document(self, file, folder='victorsprings_documents'):
-        """Upload a document to Cloudinary (backup) and return the secure URL"""
+        """Upload a document to Cloudinary with public access.
+        Uses resource_type='raw' for PDFs so Cloudinary serves them
+        with correct content-type and without auth restrictions.
+        """
         try:
             result = cloudinary.uploader.upload(
                 file,
                 folder=folder,
-                resource_type='auto'
+                resource_type='raw',
+                access_mode='public',
+                use_filename=False,
+                unique_filename=True
             )
             return result.get('secure_url')
         except Exception as e:
