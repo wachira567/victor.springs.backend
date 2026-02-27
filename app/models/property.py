@@ -89,9 +89,7 @@ class Property(db.Model):
     
     def can_be_edited_by(self, user):
         """Check if user can edit this property"""
-        if user.is_super_admin():
-            return True
-        if user.is_admin() and self.status in ['pending_review', 'fee_pending']:
+        if user.is_super_admin() or user.is_admin():
             return True
         if user.id == self.landlord_id and self.status in ['pending_review', 'rejected']:
             return True

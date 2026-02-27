@@ -252,27 +252,117 @@ def update_property(property_id):
         if not property.can_be_edited_by(user):
             return jsonify({'message': 'Permission denied'}), 403
         
-        data = request.get_json()
+        import json
+        from datetime import datetime
         
-        # Update fields
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+            # Parse stringified lists from FormData
+            for field in ['units', 'amenities', 'images']:
+                if field in data and isinstance(data[field], str):
+                    try:
+                        data[field] = json.loads(data[field])
+                    except json.JSONDecodeError:
+                        data[field] = []
+
+        def safe_float(val):
+            try:
+                return float(val) if val and str(val).strip() != "" else None
+            except:
+                return None
+        
+        def safe_int(val, default=None):
+            try:
+                return int(val) if val and str(val).strip() != "" else default
+            except:
+                return default
+                
+        def safe_date(val):
+            if not val or str(val).strip() == "":
+                return None
+            try:
+                if isinstance(val, str):
+                    return datetime.strptime(val.split('T')[0], '%Y-%m-%d').date()
+                return val
+            except:
+                return None
+
+        # Update basic fields
         if 'title' in data:
             property.title = sanitize_string(data['title']).strip()
         if 'description' in data:
             property.description = sanitize_string(data['description']).strip()
+        if 'propertyType' in data or 'property_type' in data:
+            property.property_type = data.get('propertyType') or data.get('property_type')
+        if 'city' in data:
+            property.city = sanitize_string(data['city']).strip()
+        if 'address' in data:
+            property.address = sanitize_string(data['address']).strip()
+        if 'locationDescription' in data or 'location_description' in data:
+            property.location_description = sanitize_string(data.get('locationDescription') or data.get('location_description')).strip()
+        
+        if 'latitude' in data:
+            property.latitude = safe_float(data['latitude'])
+        if 'longitude' in data:
+            property.longitude = safe_float(data['longitude'])
+        
+        # Legacy/Flat fields
         if 'price' in data:
-            property.price = data['price']
+            property.price = safe_float(data['price'])
+        if 'deposit' in data:
+            property.deposit = safe_float(data['deposit'])
+        if 'bedrooms' in data:
+            property.bedrooms = safe_int(data['bedrooms'])
+        if 'bathrooms' in data:
+            property.bathrooms = safe_int(data['bathrooms'])
+        if 'area' in data:
+            property.area = safe_int(data['area'])
+            
+        # Advanced fields
+        if 'units' in data:
+            property.units = data['units']
         if 'amenities' in data:
             property.amenities = data['amenities']
         if 'images' in data:
-            property.images = data['images']
-        
-        # Admin-only fields
+            property.images = data['images'] # This includes existing image URLs
+        if 'tenantAgreementFee' in data or 'tenant_agreement_fee' in data:
+            property.tenant_agreement_fee = safe_float(data.get('tenantAgreementFee') or data.get('tenant_agreement_fee'))
+        if 'available_from' in data:
+            property.available_from = safe_date(data['available_from']) or property.available_from
+        if 'minimum_lease_months' in data:
+            property.minimum_lease_months = safe_int(data['minimum_lease_months'], 12)
+
+        # Admin-only quality control fields
         if user.is_admin():
             if 'admin_edited_title' in data:
                 property.admin_edited_title = sanitize_string(data['admin_edited_title']).strip()
             if 'admin_edited_description' in data:
                 property.admin_edited_description = sanitize_string(data['admin_edited_description']).strip()
         
+        # Handle New Tenant Agreement Upload
+        cloudinary = CloudinaryService()
+        tenant_agreement = request.files.get('tenant_agreement_file')
+        if tenant_agreement:
+            url = cloudinary.upload_document(tenant_agreement, folder='tenant_agreements')
+            if url:
+                property.tenant_agreement_url = url
+                
+        # Handle New Property Image Uploads
+        image_files = request.files.getlist('images')
+        uploaded_image_urls = []
+        if image_files:
+            for image_file in image_files:
+                if image_file.filename != '':
+                    img_url = cloudinary.upload_image(image_file, folder='property_images')
+                    if img_url:
+                        uploaded_image_urls.append(img_url)
+        
+        # Merge new images with current ones (if not explicitly overwritten by images JSON)
+        if uploaded_image_urls:
+            property.images = (property.images or []) + uploaded_image_urls
+
         db.session.commit()
         
         return jsonify({
