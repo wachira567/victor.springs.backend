@@ -219,12 +219,18 @@ def create_property():
         
         # Merge with existing images if any came from JSON 
         property.images = property.images + uploaded_image_urls if property.images else uploaded_image_urls
+
+        # Auto-approve if created by admin/super_admin
+        if user and user.is_admin():
+            property.approve(user_id)
                 
         db.session.add(property)
         db.session.commit()
         
+        status_msg = 'Property created and published successfully.' if user and user.is_admin() else 'Property submitted successfully. It will be reviewed shortly.'
+        
         return jsonify({
-            'message': 'Property submitted successfully. It will be reviewed shortly.',
+            'message': status_msg,
             'property': property.to_dict()
         }), 201
         
