@@ -81,6 +81,7 @@ def create_app(config_name=None):
     from app.api.applications import applications_bp
     from app.api.admin_reports import admin_reports_bp
     from app.api.otp import otp_bp
+    from app.api.audit import audit_bp
     
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(properties_bp, url_prefix='/api/properties')
@@ -92,6 +93,7 @@ def create_app(config_name=None):
     app.register_blueprint(applications_bp, url_prefix='/api/applications')
     app.register_blueprint(admin_reports_bp, url_prefix='/api/admin/reports')
     app.register_blueprint(otp_bp, url_prefix='/api/otp')
+    app.register_blueprint(audit_bp, url_prefix='/api/audit')
     
     # Error handlers
     @app.errorhandler(429)
