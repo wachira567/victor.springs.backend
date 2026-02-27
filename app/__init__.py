@@ -79,7 +79,6 @@ def create_app(config_name=None):
     from app.api.properties import properties_bp
     from app.api.users import users_bp
     from app.api.payments import payments_bp
-    from app.api.visits import visits_bp
     from app.api.enquiries import enquiries_bp
     from app.api.settings import settings_bp
     from app.api.applications import applications_bp
@@ -91,7 +90,6 @@ def create_app(config_name=None):
     app.register_blueprint(properties_bp, url_prefix='/api/properties')
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(payments_bp, url_prefix='/api/payments')
-    app.register_blueprint(visits_bp, url_prefix='/api/visits')
     app.register_blueprint(enquiries_bp, url_prefix='/api/enquiries')
     app.register_blueprint(settings_bp, url_prefix='/api/settings')
     app.register_blueprint(applications_bp, url_prefix='/api/applications')

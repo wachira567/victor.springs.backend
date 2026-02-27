@@ -114,7 +114,7 @@ def get_property(property_id):
         is_liked = False
         try:
             if verify_jwt_in_request(optional=True):
-                user_id = get_jwt_identity()
+                user_id = int(get_jwt_identity())
                 if user_id:
                     like = PropertyLike.query.filter_by(user_id=user_id, property_id=property_id).first()
                     is_liked = bool(like)
@@ -135,7 +135,7 @@ def get_property(property_id):
 def create_property():
     """Create a new property listing"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if user and not user.is_super_admin() and not user.is_landlord_verified:
@@ -259,7 +259,7 @@ def create_property():
 def update_property(property_id):
     """Update a property listing"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         property = Property.query.get_or_404(property_id)
         
@@ -395,7 +395,7 @@ def update_property(property_id):
 def delete_property(property_id):
     """Delete a property listing"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         property = Property.query.get_or_404(property_id)
         
@@ -437,7 +437,7 @@ def get_pending_properties():
 def approve_property(property_id):
     """Approve a property listing"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         property = Property.query.get_or_404(property_id)
         
         if property.status not in ['pending_review', 'fee_pending', 'inactive']:
@@ -487,7 +487,7 @@ def update_property_status(property_id):
 def reject_property(property_id):
     """Reject a property listing"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         reason = data.get('reason', '')
         
@@ -545,7 +545,7 @@ def set_partnership_fee(property_id):
 def get_my_properties():
     """Get properties for the current landlord"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         
         properties = Property.query.filter_by(landlord_id=user_id).order_by(Property.created_at.desc()).all()
         
@@ -561,7 +561,7 @@ def get_my_properties():
 def toggle_property_like(property_id):
     """Toggle a like on a property for the current user"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         property = Property.query.get_or_404(property_id)
         
         # Prevent liking multiple times
@@ -623,7 +623,7 @@ def record_property_interaction(property_id):
 def get_liked_properties():
     """Get all properties liked by the current user"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         
         # Join PropertyLike with Property to get liked properties
         liked_properties = db.session.query(Property).join(

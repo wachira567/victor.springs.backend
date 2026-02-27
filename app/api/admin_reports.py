@@ -11,7 +11,7 @@ admin_reports_bp = Blueprint('admin_reports', __name__)
 @admin_reports_bp.route('/', methods=['GET'], strict_slashes=False)
 @jwt_required()
 def get_admin_reports():
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
     user = User.query.get(current_user_id)
     
     if not user or user.role not in ['admin', 'super_admin']:

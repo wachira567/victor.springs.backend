@@ -19,7 +19,7 @@ applications_bp = Blueprint('applications', __name__)
 def submit_application():
     """Submit a tenant application (with signed document and IDs)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         if request.form.get('digital_consent') != 'true':
@@ -119,7 +119,7 @@ def submit_application():
 def get_my_applications():
     """Get all applications submitted by current user"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         apps = TenantApplication.query.filter_by(user_id=user_id).order_by(TenantApplication.created_at.desc()).all()
         return jsonify({'applications': [a.to_dict() for a in apps]}), 200
     except Exception as e:

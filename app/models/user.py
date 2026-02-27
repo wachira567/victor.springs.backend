@@ -39,8 +39,7 @@ class User(db.Model):
     # Relationships
     properties = db.relationship('Property', backref='landlord', lazy='dynamic',
                                 foreign_keys='Property.landlord_id')
-    visits = db.relationship('Visit', backref='tenant', lazy='dynamic',
-                            foreign_keys='Visit.tenant_id')
+
     payments = db.relationship('Payment', backref='user', lazy='dynamic')
     documents = db.relationship('Document', backref='user', lazy='dynamic',
                                foreign_keys='Document.user_id')

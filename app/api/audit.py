@@ -80,7 +80,7 @@ def get_my_audit_logs():
     """Endpoint for regular users to fetch their own activity/notifications"""
     try:
         from flask_jwt_extended import get_jwt_identity
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 20, type=int)

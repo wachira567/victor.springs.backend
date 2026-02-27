@@ -72,7 +72,7 @@ class Property(db.Model):
     
     # Relationships
     landlord_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    visits = db.relationship('Visit', backref='property', lazy='dynamic')
+
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

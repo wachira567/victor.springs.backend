@@ -13,7 +13,7 @@ users_bp = Blueprint('users', __name__)
 def update_profile():
     """Update the current user's profile information"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         data = request.get_json()
@@ -91,7 +91,7 @@ def get_user(user_id):
 def update_user_role(user_id):
     """Update a user's role (super_admin only ideally)"""
     try:
-        current_admin = User.query.get(get_jwt_identity())
+        current_admin = User.query.get(int(get_jwt_identity()))
         if not current_admin or not current_admin.is_super_admin():
             return jsonify({'message': 'Only Super Admins can change roles'}), 403
             
@@ -143,7 +143,7 @@ def update_user_status(user_id):
 def delete_user(user_id):
     """Delete a user (admin only)"""
     try:
-        current_user_id = get_jwt_identity()
+        current_user_id = int(get_jwt_identity())
         
         if user_id == current_user_id:
             return jsonify({'message': 'Cannot delete yourself'}), 400
@@ -216,7 +216,7 @@ def approve_kyc(user_id):
     """Approve a KYC verification request (admin only)"""
     try:
         from app.models.document import Document
-        admin_id = get_jwt_identity()
+        admin_id = int(get_jwt_identity())
         user = User.query.get_or_404(user_id)
         
         docs = Document.query.filter_by(user_id=user.id, status='pending').all()
@@ -243,7 +243,7 @@ def reject_kyc(user_id):
     """Reject a KYC verification request (admin only)"""
     try:
         from app.models.document import Document
-        admin_id = get_jwt_identity()
+        admin_id = int(get_jwt_identity())
         data = request.get_json() or {}
         reason = data.get('reason', 'Rejected by Admin')
         

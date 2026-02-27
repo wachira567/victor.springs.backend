@@ -18,7 +18,7 @@ payments_bp = Blueprint('payments', __name__)
 def initiate_payment():
     """Initiate M-Pesa STK Push payment"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         data = request.get_json()
         
         amount = data.get('amount')
@@ -168,7 +168,7 @@ def mpesa_callback():
 def check_payment_status(payment_id):
     """Check payment status"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         payment = Payment.query.get_or_404(payment_id)
@@ -188,7 +188,7 @@ def check_payment_status(payment_id):
 def get_my_payments():
     """Get current user's payments"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         
         payments = Payment.query.filter_by(user_id=user_id).order_by(Payment.created_at.desc()).all()
         
@@ -205,7 +205,7 @@ def get_my_payments():
 def get_all_payments():
     """Get all payments (admin only)"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user.is_admin():

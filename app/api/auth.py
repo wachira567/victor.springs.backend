@@ -208,7 +208,7 @@ def login():
 def get_current_user():
     """Get current user details"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -225,7 +225,7 @@ def get_current_user():
 def update_current_user():
     """Update current user details"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -258,7 +258,7 @@ def update_current_user():
 def change_password():
     """Change user password"""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:
@@ -406,7 +406,7 @@ def allowed_file(filename):
 def send_kyc_otp():
     """Request an OTP for KYC phone verification."""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user or not user.is_landlord():
@@ -438,7 +438,7 @@ def send_kyc_otp():
 def submit_kyc():
     """Submit Landlord KYC verification details and ID document."""
     try:
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         
         if not user:

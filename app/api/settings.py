@@ -26,7 +26,7 @@ def update_settings():
     """Update settings (Super Admin only for certain settings, but Admin allowed generally)"""
     try:
         # Require Super Admin to change the global contact number
-        current_user = User.query.get(get_jwt_identity())
+        current_user = User.query.get(int(get_jwt_identity()))
         if not current_user or not current_user.is_super_admin():
             return jsonify({'message': 'Only Super Admins can update global settings'}), 403
 
