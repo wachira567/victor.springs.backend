@@ -33,11 +33,11 @@ class CloudinaryService:
     def upload_document(self, file, folder='victorsprings_documents'):
         """Upload a generic document (like PDF) to Cloudinary and return the secure URL"""
         try:
-            # We use 'auto' or 'raw' resourceful types for non-image objects like PDFs depending on Cloudinary config
             result = cloudinary.uploader.upload(
                 file,
                 folder=folder,
-                resource_type='auto' 
+                resource_type='raw',
+                access_mode='public'
             )
             return result.get('secure_url')
         except Exception as e:
