@@ -27,7 +27,7 @@ def submit_enquiry():
             verify_jwt_in_request(optional=True)
             identity = get_jwt_identity()
             if identity:
-                user_id = identity
+                user_id = int(identity)
         except:
             pass
             

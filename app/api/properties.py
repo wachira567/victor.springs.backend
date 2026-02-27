@@ -37,7 +37,7 @@ def get_properties():
             verify_jwt_in_request(optional=True)
             identity = get_jwt_identity()
             if identity:
-                user = User.query.get(identity)
+                user = User.query.get(int(identity))
                 if user and user.is_admin():
                     is_admin = True
         except:

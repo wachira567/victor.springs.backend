@@ -159,7 +159,7 @@ def get_admin_applications():
 def update_application_status(app_id):
     """Admin endpoint to approve or reject an application with vacancy management"""
     try:
-        admin_id = get_jwt_identity()
+        admin_id = int(get_jwt_identity())
         admin_user = User.query.get(admin_id)
         data = request.get_json()
         new_status = data.get('status')
