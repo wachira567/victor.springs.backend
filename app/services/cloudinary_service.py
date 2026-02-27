@@ -41,24 +41,26 @@ class CloudinaryService:
             return None
 
     def upload_document_dual(self, file, folder='victorsprings_documents', filename=None):
-        """Upload a document to both Uploadcare (primary) and Cloudinary (backup).
+        """Upload a document to both Cloudinary (primary) and Uploadcare (backup).
+        
+        Cloudinary is used as the primary URL (reliable delivery).
+        Uploadcare is stored as backup in audit logs.
         
         Returns a dict with:
-            'primary_url': Uploadcare CDN URL (for downloads)
-            'backup_url': Cloudinary URL (for backup/audit)
+            'primary_url': Cloudinary URL (stored in DB for downloads)
+            'backup_url': Uploadcare CDN URL (for redundancy)
         """
-        from app.services.uploadcare_service import UploadcareService
+        # Upload to Cloudinary first (primary — always works)
+        primary_url = self.upload_document(file, folder=folder)
         
-        # Upload to Uploadcare first (primary delivery)
-        uploadcare = UploadcareService()
-        primary_url = uploadcare.upload_file(file, filename=filename)
-        
-        # Upload to Cloudinary as backup (file pointer was reset by Uploadcare service)
-        backup_url = self.upload_document(file, folder=folder)
-        
-        # If Uploadcare failed, fall back to Cloudinary URL  
-        if not primary_url:
-            primary_url = backup_url
+        # Upload to Uploadcare as backup (file pointer was reset)
+        backup_url = None
+        try:
+            from app.services.uploadcare_service import UploadcareService
+            uploadcare = UploadcareService()
+            backup_url = uploadcare.upload_file(file, filename=filename)
+        except Exception as e:
+            print(f"Uploadcare backup upload failed: {str(e)}")
         
         return {
             'primary_url': primary_url,

@@ -99,6 +99,9 @@ def create_app(config_name=None):
     app.register_blueprint(otp_bp, url_prefix='/api/otp')
     app.register_blueprint(audit_bp, url_prefix='/api/audit')
     
+    from app.api.download import download_bp
+    app.register_blueprint(download_bp, url_prefix='/api/download')
+    
     # Error handlers
     @app.errorhandler(429)
     def ratelimit_handler(e):
