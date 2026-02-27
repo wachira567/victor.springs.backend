@@ -37,13 +37,24 @@ def initiate_payment():
         if not payment_type:
             return jsonify({'message': 'Payment type is required'}), 400
         
+        # Standardize phone number for storage (E.164)
+        # This ensures Twilio/SMS services work reliably
+        stored_phone = str(phone_number).replace(' ', '').replace('-', '')
+        if stored_phone.startswith('0'):
+            stored_phone = '+254' + stored_phone[1:]
+        elif not stored_phone.startswith('+'):
+            if stored_phone.startswith('254'):
+                stored_phone = '+' + stored_phone
+            else:
+                stored_phone = '+254' + stored_phone
+        
         # Create payment record
         payment = Payment(
             user_id=user_id,
             amount=amount,
             payment_type=payment_type,
             property_id=property_id,
-            phone_number=phone_number,
+            phone_number=stored_phone,
             description=description,
             status='pending'
         )

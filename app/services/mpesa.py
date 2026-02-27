@@ -16,10 +16,11 @@ class MpesaService:
         self.env = os.getenv('MPESA_ENV', 'sandbox')
         
         # Base URLs
+        # Base URLs (Kenyan M-Pesa API)
         if self.env == 'production':
-            self.base_url = 'https://api.safaricom.et'
+            self.base_url = 'https://api.safaricom.co.ke'
         else:
-            self.base_url = 'https://sandbox.safaricom.et'
+            self.base_url = 'https://sandbox.safaricom.co.ke'
     
     def get_access_token(self):
         """Get M-Pesa access token"""
@@ -39,7 +40,7 @@ class MpesaService:
             if response.status_code == 200:
                 return response.json().get('access_token')
             else:
-                current_app.logger.error(f'M-Pesa token error: {response.text}')
+                current_app.logger.error(f'M-Pesa token error: {response.status_code} - {response.text}')
                 return None
                 
         except Exception as e:
@@ -52,15 +53,24 @@ class MpesaService:
         return base64.b64encode(data_to_encode.encode()).decode()
     
     def format_phone_number(self, phone_number):
-        """Format phone number to 254XXXXXXXXX format"""
-        # Remove spaces and dashes
-        phone = phone_number.replace(' ', '').replace('-', '')
+        """Format phone number to 254XXXXXXXXX format for Safaricom API"""
+        if not phone_number:
+            return ""
+            
+        # Remove spaces, dashes, and plus sign
+        phone = str(phone_number).replace(' ', '').replace('-', '').replace('+', '')
         
-        # Convert to required format
+        # Kenyan Specifics: Convert 07... or 01... to 2547... or 2541...
         if phone.startswith('0'):
             phone = '254' + phone[1:]
-        elif phone.startswith('+'):
-            phone = phone[1:]
+        elif phone.startswith('7') and len(phone) == 9:
+            phone = '254' + phone
+        elif phone.startswith('1') and len(phone) == 9:
+            phone = '254' + phone
+            
+        # Ensure it starts with 254
+        if not phone.startswith('254') and len(phone) == 9:
+             phone = '254' + phone
         
         return phone
     
