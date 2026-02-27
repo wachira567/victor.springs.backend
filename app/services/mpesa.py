@@ -109,8 +109,8 @@ class MpesaService:
                 'PartyB': self.shortcode,
                 'PhoneNumber': formatted_phone,
                 'CallBackURL': os.getenv('MPESA_CALLBACK_URL', ''),
-                'AccountReference': account_reference[:20],  # Max 20 chars
-                'TransactionDesc': transaction_desc[:13]  # Max 13 chars
+                'AccountReference': str(account_reference)[:12],  # Max 12 chars for better compatibility
+                'TransactionDesc': str(transaction_desc)[:12]  # Max 12 chars
             }
             
             response = requests.post(url, json=payload, headers=headers, timeout=30)
